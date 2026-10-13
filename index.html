@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Turan Camp — Reception Management</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header>
+  <div class="logo">TURAN <span>CAMP</span></div>
+  <span class="demo-badge">ДЕМО</span>
+  <span class="user-badge" id="current-user">👤 Admin</span>
+  <div class="clock" id="clock"></div>
+</header>
+
+<div class="layout">
+  <nav>
+    <a class="active" data-page="dashboard"><span class="nav-icon">🏠</span> Дашборд</a>
+    <div class="nav-sep"></div>
+    <a data-page="blocks"><span class="nav-icon">🏢</span> Блоки и этажи</a>
+    <a data-page="residents"><span class="nav-icon">👥</span> Все сотрудники</a>
+    <a data-page="assignments"><span class="nav-icon">🔗</span> Закрепления</a>
+    <div class="nav-sep"></div>
+    <a data-page="overtime"><span class="nav-icon">🔍</span> Поиск Овертайм</a>
+    <a data-page="history"><span class="nav-icon">📋</span> История изменений</a>
+    <div class="nav-sep"></div>
+    <a data-page="import"><span class="nav-icon">📥</span> Импорт ADR</a>
+    <a data-page="import-encl"><span class="nav-icon">📥</span> Импорт Enclosement</a>
+  </nav>
+
+  <main>
+
+    <!-- DASHBOARD -->
+    <div class="page active" id="page-dashboard">
+      <div class="ph">
+        <div><div class="ph-title">Дашборд</div><div class="ph-sub" id="dash-date"></div></div>
+        <button class="btn btn-ghost btn-sm" onclick="renderDashboard()">↻ Обновить</button>
+      </div>
+      <div class="stats-row" id="dash-stats"></div>
+      <div class="section" id="today-alerts-section" style="display:none;">
+        <div class="sec-title">📌 События сегодня</div>
+        <div id="today-alerts"></div>
+      </div>
+      <div class="section">
+        <div class="sec-title">Обзор блоков</div>
+        <div class="block-grid" id="dash-blocks"></div>
+      </div>
+    </div>
+
+    <!-- BLOCKS & FLOORS -->
+    <div class="page" id="page-blocks">
+      <div class="ph">
+        <div><div class="ph-title">Блоки и поэтажная навигация</div><div class="ph-sub">Комнаты сгруппированы по этажам (100, 200, 300)</div></div>
+        <select id="block-select" onchange="renderBlockFloors()" style="background:var(--card);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:8px;font-size:14px;">
+          <option value="">Выберите блок</option>
+        </select>
+      </div>
+      <div id="block-floors-container">
+        <div class="empty"><div class="empty-icon">🏢</div><div>Выберите блок для просмотра</div></div>
+      </div>
+    </div>
+
+    <!-- RESIDENTS -->
+    <div class="page" id="page-residents">
+      <div class="ph">
+        <div class="ph-title">Все сотрудники</div>
+        <button class="btn btn-primary" onclick="openEmployeeModal(null)">+ Добавить</button>
+      </div>
+      <div class="searchbar">
+        <input id="sq" placeholder="🔍  Имя, табельный №, комната..." oninput="renderResidents()">
+        <select id="sb" onchange="renderResidents()"><option value="">Все блоки</option></select>
+        <select id="ss" onchange="renderResidents()">
+          <option value="">Все статусы</option>
+          <option value="active">Проживают</option>
+          <option value="expected">Ожидаются</option>
+          <option value="departed">Выехали</option>
+        </select>
+      </div>
+      <div class="card">
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Фамилия Имя</th><th>Таб. №</th><th>Блок</th><th>Комната</th><th>Сменщик</th><th>Заезд</th><th>Выезд</th><th>Статус</th><th></th></tr></thead>
+            <tbody id="res-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="text-muted mt12" id="res-count"></div>
+    </div>
+
+    <!-- ASSIGNMENTS -->
+    <div class="page" id="page-assignments">
+      <div class="ph">
+        <div><div class="ph-title">Плановые закрепления</div><div class="ph-sub">Связь сотрудник ↔ сменщик ↔ комната</div></div>
+        <button class="btn btn-primary" onclick="openAssignmentModal()">+ Новое закрепление</button>
+      </div>
+      <div class="card mt12">
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Сотрудник</th><th>Сменщик</th><th>Блок</th><th>Комната</th><th>Период</th><th></th></tr></thead>
+            <tbody id="assign-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- OVERTIME SEARCH -->
+    <div class="page" id="page-overtime">
+      <div class="ph">
+        <div><div class="ph-title">Поиск комнат для Овертайм</div><div class="ph-sub">Поиск свободных комнат на заданный период</div></div>
+      </div>
+      <div class="card" style="padding:20px;">
+        <div class="fg">
+          <div class="fr"><label>Блок</label><select id="ot-block"><option value="">Все блоки</option></select></div>
+          <div class="fr"><label>Этаж</label><select id="ot-floor"><option value="">Все этажи</option><option value="1">1 этаж (100-199)</option><option value="2">2 этаж (200-299)</option><option value="3">3 этаж (300-399)</option></select></div>
+        </div>
+        <div class="fg">
+          <div class="fr"><label>Дата заезда</label><input type="date" id="ot-arrive"></div>
+          <div class="fr"><label>Дата выезда</label><input type="date" id="ot-depart"></div>
+        </div>
+        <button class="btn btn-success mt12" onclick="searchOvertime()">🔍 Найти свободные комнаты</button>
+        <div id="ot-results" class="mt20"></div>
+      </div>
+    </div>
+
+    <!-- HISTORY -->
+    <div class="page" id="page-history">
+      <div class="ph">
+        <div><div class="ph-title">История изменений</div><div class="ph-sub">Все операции с сотрудниками и комнатами</div></div>
+        <button class="btn btn-ghost btn-sm" onclick="exportHistory()">📤 Экспорт</button>
+      </div>
+      <div class="searchbar">
+        <input id="hq" placeholder="🔍  Поиск по истории..." oninput="renderHistory()">
+      </div>
+      <div class="card">
+        <div class="history-list" id="history-list"></div>
+      </div>
+    </div>
+
+    <!-- IMPORT ADR -->
+    <div class="page" id="page-import">
+      <div class="ph">
+        <div><div class="ph-title">Импорт ADR (список проживающих)</div><div class="ph-sub">Загрузка текущего размещения сотрудников</div></div>
+      </div>
+      <div class="grid2">
+        <div>
+          <div class="dropzone" id="dropzone-adr" onclick="document.getElementById('file-inp-adr').click()">
+            <div class="dz-icon">📂</div>
+            <div style="font-size:15px;font-weight:600;">ADR файл</div>
+            <div style="font-size:12px;">.xlsx со списком проживающих</div>
+          </div>
+          <input type="file" id="file-inp-adr" accept=".xlsx,.xls" style="display:none" onchange="importADR(this)">
+          <div class="import-result" id="ir-adr"></div>
+        </div>
+        <div class="import-card">
+          <div class="sec-title">Структура ADR</div>
+          <div style="color:var(--muted);font-size:13px;line-height:1.75;">
+            <p>• Имя, Фамилия</p>
+            <p>• Табельный номер</p>
+            <p>• Блок, Комната</p>
+            <p>• Компания, Отдел</p>
+            <p style="margin-top:8px;color:var(--yellow);">Автоматически обновляет статус на "Проживает"</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- IMPORT ENCLOSEMENT -->
+    <div class="page" id="page-import-encl">
+      <div class="ph">
+        <div><div class="ph-title">Импорт Enclosement</div><div class="ph-sub">Список заезда/выезда с закрепленными комнатами</div></div>
+      </div>
+      <div class="grid2">
+        <div>
+          <div class="dropzone" id="dropzone-encl" onclick="document.getElementById('file-inp-encl').click()">
+            <div class="dz-icon">📋</div>
+            <div style="font-size:15px;font-weight:600;">Enclosement файл</div>
+            <div style="font-size:12px;">.xlsx с графиком заездов/выездов</div>
+          </div>
+          <input type="file" id="file-inp-encl" accept=".xlsx,.xls" style="display:none" onchange="importEnclosement(this)">
+          <div class="import-result" id="ir-encl"></div>
+        </div>
+        <div class="import-card">
+          <div class="sec-title">Структура Enclosement</div>
+          <div style="color:var(--muted);font-size:13px;line-height:1.75;">
+            <p>• Имя, Фамилия</p>
+            <p>• Табельный номер</p>
+            <p>• Дата заезда, Дата выезда</p>
+            <p>• Закрепленная комната</p>
+            <p>• Информация о сменщике</p>
+            <p style="margin-top:8px;color:var(--yellow);">Создает закрепления и обновляет даты</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- MODAL: Employee Card -->
+<div class="overlay" id="modal-emp">
+  <div class="modal modal-lg" id="modal-emp-content"></div>
+</div>
+
+<!-- MODAL: Employee Form -->
+<div class="overlay" id="modal-emp-form">
+  <div class="modal">
+    <h2 id="emp-form-title">Сотрудник</h2>
+    <div class="fg">
+      <div class="fr"><label>Имя</label><input id="ef-first"></div>
+      <div class="fr"><label>Фамилия</label><input id="ef-last"></div>
+    </div>
+    <div class="fg">
+      <div class="fr"><label>Табельный №</label><input id="ef-emp"></div>
+      <div class="fr"><label>Компания</label><input id="ef-company"></div>
+    </div>
+    <div class="fg3">
+      <div class="fr"><label>Блок</label><input id="ef-block"></div>
+      <div class="fr"><label>Комната</label><input id="ef-room"></div>
+      <div class="fr"><label>Вахта</label><select id="ef-shift"><option value="">—</option><option value="A">A</option><option value="B">B</option><option value="C">C</option></select></div>
+    </div>
+    <div class="fg">
+      <div class="fr"><label>Дата заезда</label><input type="date" id="ef-arrive"></div>
+      <div class="fr"><label>Дата выезда</label><input type="date" id="ef-depart"></div>
+    </div>
+    <div class="fr"><label>Статус</label><select id="ef-status"><option value="active">Проживает</option><option value="expected">Ожидается</option><option value="departed">Выехал</option></select></div>
+    <div class="fr"><label>Сменщик (таб. №)</label><input id="ef-relief" placeholder="Табельный номер сменщика"></div>
+    <div class="fr"><label>Примечание</label><textarea id="ef-notes" rows="2"></textarea></div>
+    <div class="mf">
+      <button class="btn btn-danger btn-sm" id="ef-btn-del" onclick="deleteEmployee()" style="margin-right:auto;display:none;">Удалить</button>
+      <button class="btn btn-ghost" onclick="closeOverlay('modal-emp-form')">Отмена</button>
+      <button class="btn btn-primary" onclick="saveEmployee()">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Assignment -->
+<div class="overlay" id="modal-assign">
+  <div class="modal">
+    <h2>Плановое закрепление</h2>
+    <div class="fg">
+      <div class="fr"><label>Сотрудник (таб. №)</label><input id="af-emp1" placeholder="Табельный номер"></div>
+      <div class="fr"><label>Сменщик (таб. №)</label><input id="af-emp2" placeholder="Табельный номер"></div>
+    </div>
+    <div class="fg">
+      <div class="fr"><label>Блок</label><input id="af-block"></div>
+      <div class="fr"><label>Комната</label><input id="af-room"></div>
+    </div>
+    <div class="fg">
+      <div class="fr"><label>Начало периода</label><input type="date" id="af-start"></div>
+      <div class="fr"><label>Конец периода</label><input type="date" id="af-end"></div>
+    </div>
+    <div class="fr"><label>Примечание</label><input id="af-notes"></div>
+    <div class="mf">
+      <button class="btn btn-ghost" onclick="closeOverlay('modal-assign')">Отмена</button>
+      <button class="btn btn-primary" onclick="saveAssignment()">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="script.js"></script>
+</body>
+</html>
